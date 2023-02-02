@@ -15,7 +15,7 @@ func HashPassword(password string) (string, error) {
 	return string(bytes), err
 }
 
-func VerifyPassword(hashedPassword, password string) (bool,string){
+func VerifyPassword(hashedPassword, password string) (bool, string) {
 	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 	if err != nil {
 		return false, err.Error()
@@ -33,7 +33,7 @@ func SignUp(c *gin.Context) {
 	user.Token, _ = helpers.GenerateToken(user.ID)
 	user.RefreshToken, _ = helpers.GenerateRefreshToken(user.ID)
 	fmt.Println(user)
-	_,err := initializers.Db.Exec("INSERT INTO users (id, firstname, lastname, email, password, token, refreshtoken) VALUES ($1, $2, $3, $4, $5, $6, $7)", user.ID, user.Firstname, user.Lastname, user.Email, user.Password, user.Token, user.RefreshToken)
+	_, err := initializers.Db.Exec("INSERT INTO users (id, firstname, lastname, email, password, token, refreshtoken) VALUES ($1, $2, $3, $4, $5, $6, $7)", user.ID, user.Firstname, user.Lastname, user.Email, user.Password, user.Token, user.RefreshToken)
 	if err != nil {
 		fmt.Println(err)
 		c.JSON(404, gin.H{"message": "User not created !"})
@@ -55,32 +55,10 @@ func Login(c *gin.Context) {
 		c.JSON(404, gin.H{"message": "Password not match"})
 		return
 	}
+
+	//validate token and refresh token
+	dbUser.Token, _ = helpers.GenerateToken(dbUser.ID)
+	dbUser.RefreshToken, _ = helpers.GenerateRefreshToken(dbUser.ID)
+
 	c.JSON(200, gin.H{"user": dbUser})
-}
-
-
-func GetUsers(c *gin.Context) {
-	var users []models.User
-	rows, err := initializers.Db.Query("SELECT * FROM users")
-	if err != nil {
-		c.JSON(404, gin.H{"message": "Users not found"})
-		return
-	}
-	for rows.Next() {
-		var user models.User
-		rows.Scan(&user.ID, &user.Firstname, &user.Lastname, &user.Email, &user.Password, &user.Token, &user.RefreshToken)
-		users = append(users, user)
-	}
-	c.JSON(200, gin.H{"users": users})
-}
-
-func GetUserbyID(c *gin.Context) {
-	var user models.User
-	id := c.Param("id")
-	err := initializers.Db.QueryRow("SELECT * FROM users WHERE id = $1", id).Scan(&user.ID, &user.Firstname, &user.Lastname, &user.Email, &user.Password, &user.Token, &user.RefreshToken)
-	if err != nil {
-		c.JSON(404, gin.H{"message": "User not found"})
-		return
-	}
-	c.JSON(200, gin.H{"user": user})
 }
